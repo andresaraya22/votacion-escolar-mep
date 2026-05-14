@@ -1,0 +1,13 @@
+image: Visual Studio 2022
+
+build: off
+
+install:
+  - py -3.12 -m pip install pyinstaller
+
+build_script:
+  - py -3.12 -m PyInstaller --onefile --windowed --add-data "mep_logo.png;." --name "VotacionEscolar" voting_app.py
+
+artifacts:
+  - path: dist\VotacionEscolar.exe
+    name: VotacionEscolar
