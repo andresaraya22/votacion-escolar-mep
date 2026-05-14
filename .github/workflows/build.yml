@@ -1,6 +1,6 @@
 name: Build Windows EXE
 
-on:
+"on":
   push:
     branches: [main]
 
