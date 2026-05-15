@@ -22,11 +22,15 @@ COOLDOWN_SECONDS = 30
 SPINNER_FRAMES   = ["◐", "◓", "◑", "◒"]
 
 PARTIES = [
-    {"id": "partido_a", "name": "Partido A", "tag": "Lista 1",
-     "candidate": "Candidatura — Nombre Apellido", "color": "#0a5fa8"},
-    {"id": "partido_b", "name": "Partido B", "tag": "Lista 2",
-     "candidate": "Candidatura — Nombre Apellido", "color": "#b21f2d"},
+    {"id": "partido_a", "name": "Partido PANDA", "tag": "Lista 1",
+     "candidate": "Armonía, Dedicación y Amor",
+     "color": "#2e7d32", "mascot": _resource("mascot_panda.png")},
+    {"id": "partido_b", "name": "Partido LAPA",  "tag": "Lista 2",
+     "candidate": "Lealtad, Amabilidad, Paz y Amistad",
+     "color": "#0a5fa8", "mascot": _resource("mascot_lapa.png")},
 ]
+
+MASCOT_W, MASCOT_H = 220, 120   # natural size of mascot PNGs
 
 # ── Design tokens (matching the HTML design) ─────────────────────────────────
 BG          = "#f5f3ee"
@@ -247,6 +251,12 @@ class VotingApp:
         self._scale          = 1.0
         self._resize_after_id   = None
         self._logo_img       = None
+        self._mascot_imgs    = {}
+        for party in PARTIES:
+            try:
+                self._mascot_imgs[party["id"]] = tk.PhotoImage(file=party["mascot"])
+            except Exception:
+                pass
 
         self._init_fonts()
         self._build_ui()
@@ -304,8 +314,11 @@ class VotingApp:
             font.configure(size=max(7, int(self._base_sizes[key] * scale)))
         flag_size = max(36, int(FLAG_BASE * scale))
         for pid, canvas in self.flag_canvases.items():
-            canvas.configure(width=flag_size, height=flag_size)
-            self._draw_flag(pid, canvas, flag_size)
+            if pid in self._mascot_imgs:
+                self._draw_flag(pid, canvas, MASCOT_W)
+            else:
+                canvas.configure(width=flag_size, height=flag_size)
+                self._draw_flag(pid, canvas, flag_size)
         if self.spinner_label:
             self.spinner_label.configure(wraplength=int(w * 0.7))
 
@@ -317,13 +330,27 @@ class VotingApp:
     def _draw_flag(self, party_id, canvas, size):
         party = next(p for p in PARTIES if p["id"] == party_id)
         canvas.delete("all")
-        r = int(size * 0.08)
-        canvas.create_rectangle(r, r, size-r, size-r,
-                                 fill=party["color"], outline="", width=0)
-        font_size = max(10, int(size * 0.40))
-        canvas.create_text(size // 2, size // 2,
-                            text=party["name"][0], fill=CARD,
-                            font=("Helvetica", font_size, "bold"))
+        if party_id in self._mascot_imgs:
+            img = self._mascot_imgs[party_id]
+            w = int(canvas["width"])
+            h = int(canvas["height"])
+            canvas.create_image(w // 2, h // 2, image=img, anchor="center")
+        else:
+            r = int(size * 0.08)
+            canvas.create_rectangle(r, r, size-r, size-r,
+                                     fill=party["color"], outline="", width=0)
+            font_size = max(10, int(size * 0.40))
+            canvas.create_text(size // 2, size // 2,
+                                text=party["name"][0], fill=CARD,
+                                font=("Helvetica", font_size, "bold"))
+
+    def _draw_party_flag_strip(self, color, canvas):
+        w = int(canvas["width"])
+        h = int(canvas["height"])
+        s = h // 3
+        canvas.create_rectangle(0,     0, w,   s, fill=color,   outline="")
+        canvas.create_rectangle(0,     s, w, 2*s, fill="white", outline="")
+        canvas.create_rectangle(0, 2*s, w,   h,   fill=color,   outline="")
 
     # ── Persistence ───────────────────────────────────────────────────────────
 
@@ -518,11 +545,14 @@ class VotingApp:
         top = tk.Frame(inner, bg=CARD)
         top.pack(fill="x")
 
-        flag_canvas = tk.Canvas(top, width=FLAG_BASE, height=FLAG_BASE,
+        has_mascot = party["id"] in self._mascot_imgs
+        fw = MASCOT_W if has_mascot else FLAG_BASE
+        fh = MASCOT_H if has_mascot else FLAG_BASE
+        flag_canvas = tk.Canvas(top, width=fw, height=fh,
                                  bg=CARD, highlightthickness=0)
         flag_canvas.pack(side="left", padx=(0, 18))
         self.flag_canvases[party["id"]] = flag_canvas
-        self._draw_flag(party["id"], flag_canvas, FLAG_BASE)
+        self._draw_flag(party["id"], flag_canvas, fw)
 
         info = tk.Frame(top, bg=CARD)
         info.pack(side="left", fill="both", expand=True)
@@ -533,6 +563,13 @@ class VotingApp:
         tk.Label(info, text=party["candidate"],
                  font=self.fonts["party_cand"],
                  bg=CARD, fg=INK_SOFT, anchor="w").pack(fill="x", pady=(6, 0))
+
+        # Party flag strip
+        flag_strip = tk.Canvas(info, width=90, height=42,
+                                bg=CARD, highlightthickness=1,
+                                highlightbackground=LINE)
+        flag_strip.pack(anchor="w", pady=(10, 0))
+        self._draw_party_flag_strip(party["color"], flag_strip)
 
         # Dashed separator (simulated with a dotted-style line)
         sep_canvas = tk.Canvas(inner, bg=CARD, height=2, highlightthickness=0)
@@ -613,9 +650,10 @@ class VotingApp:
             return
         self.votes[party_id] = self.votes.get(party_id, 0) + 1
         self._save_votes()
-        # Highlight selected card briefly
+        # Highlight selected card with its own party color
+        selected_color = next(p["color"] for p in PARTIES if p["id"] == party_id)
         for pid, wrapper in self.card_frames.items():
-            wrapper.configure(bg=SELECTED_BORDER if pid == party_id else LINE)
+            wrapper.configure(bg=selected_color if pid == party_id else LINE)
         self._start_cooldown()
 
     def _start_cooldown(self):
@@ -701,6 +739,20 @@ class VotingApp:
 
 
 def main():
+    # Tell Windows to render at native DPI instead of blurring/scaling the app
+    if sys.platform == "win32":
+        import ctypes
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)  # per-monitor DPI aware
+        except Exception:
+            try:
+                ctypes.windll.shcore.SetProcessDpiAwareness(1)  # system DPI aware
+            except Exception:
+                try:
+                    ctypes.windll.user32.SetProcessDPIAware()   # legacy fallback
+                except Exception:
+                    pass
+
     root = tk.Tk()
     VotingApp(root)
     root.mainloop()

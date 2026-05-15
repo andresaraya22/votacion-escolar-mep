@@ -6,7 +6,7 @@ install:
   - py -3.12 -m pip install pyinstaller
 
 build_script:
-  - py -3.12 -m PyInstaller --onefile --windowed --add-data "mep_logo.png;." --name "VotacionEscolar" voting_app.py
+  - py -3.12 -m PyInstaller --onefile --windowed --add-data "mep_logo.png;." --add-data "mascot_panda.png;." --add-data "mascot_lapa.png;." --name "VotacionEscolar" voting_app.py
 
 artifacts:
   - path: dist\VotacionEscolar.exe
