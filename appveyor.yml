@@ -3,10 +3,11 @@ image: Visual Studio 2022
 build: off
 
 install:
-  - py -3.12 -m pip install pyinstaller
+  - py -3.12 -m pip install pyinstaller pillow
 
 build_script:
-  - py -3.12 -m PyInstaller --onefile --windowed --add-data "mep_logo.png;." --add-data "mascot_panda.png;." --add-data "mascot_lapa.png;." --name "VotacionEscolar" voting_app.py
+  - py -3.12 -c "from PIL import Image; img=Image.open('mep_logo.png').convert('RGBA'); img.save('icon.ico', sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)])"
+  - py -3.12 -m PyInstaller --onefile --windowed --icon "icon.ico" --add-data "mep_logo.png;." --add-data "mascot_panda.png;." --add-data "mascot_lapa.png;." --name "VotacionEscolar" voting_app.py
 
 artifacts:
   - path: dist\VotacionEscolar.exe
